@@ -1,0 +1,92 @@
+You are helping me write a specification for an open-source tool. This is read-only research on this laptop. Do not change any file, branch or setting. Do not commit, push, or start or stop anything I have not asked for.
+
+## Context
+I'm building Chiefbot, an open-source agent app (github.com/JorgeMenaDev/chiefbot). A "chief of staff" agent hands work, such as a Jira ticket, to a "project" for one repo. The project starts "engineers". An engineer is an isolated agent that works on one ticket in its own Docker container and ends with a pull request. Two tickets can run at once, so two engineers run in parallel.
+
+For our UI repo, an engineer cannot run or test the UI on its own. Each engineer needs its own full stack, isolated from every other engineer:
+- the UI dev server
+- the meta service (Java): all the API calls the UI makes
+- the auth service (Java): authentication
+- a PostgreSQL database, created fresh and seeded with test data
+
+The setup order for each engineer is:
+1. Start Postgres.
+2. Run the migrations.
+3. Seed the data.
+4. Start auth.
+5. Start meta.
+6. Start the UI.
+7. Wait until the health checks pass. Only then does the engineer start work.
+
+I need a precise but sanitised description of how our stack works today. I will use it to build a generic version in the open-source project, with small stand-in Java services. Then I will fork it and run it here.
+
+## Confidentiality (most important)
+What you write will leave the bank and go into a public open-source project.
+- Describe the shape only. Never copy source code, config files, SQL or seed data.
+- Use generic names: "ui", "meta", "auth", "postgres". Leave out internal product names, team names, people, hostnames, URLs, IPs, registry or artifact-repo addresses, Jira keys and cloud account IDs.
+- Never include secrets, tokens, passwords, keys or certificates, not even test ones. Give environment variable NAMES only, each with a one-line purpose. Replace any value with <redacted>.
+- Include no customer or production data, not even samples. Describe the seed data by its shape: the tables, rough row counts and the kinds of records.
+- If you are unsure whether something is sensitive, leave it out and list it under "Withheld".
+
+## What to find out
+Look at the UI repo, the meta and auth service repos if they are on this laptop, and any docker-compose files, Makefiles, scripts, READMEs and dev docs. Answer every question. Write "unknown" rather than guessing.
+
+1. UI
+- The framework, language, Node version and package manager.
+- The install, dev, build, test, lint and e2e commands, and the dev server port.
+- How the UI reaches meta and auth in local dev: a dev-server proxy, absolute URLs from env vars, or something else. Write each proxy rule in generic form, for example "/api/** → meta:8080, strips /api".
+- How login works in dev: an OIDC/OAuth redirect, a login form, a token in a header, or a session cookie. List the cookie domain, SameSite and secure settings that matter on localhost.
+- The environment variables it reads: names and purpose only.
+- Any hard-coded hosts or ports (for example localhost:8080) that would clash if two copies of the stack ran on one machine.
+
+2. Meta service
+- The Java version, framework and version (for example Spring Boot 3.x), and build tool (Maven or Gradle).
+- How it runs locally (a command, a jar or a Docker image), its port and its health endpoint.
+- How it connects to Postgres: env var names and profiles. Which migration tool it uses (Flyway, Liquibase or none) and when the migrations run.
+- How it trusts auth: it validates JWTs against a JWKS or issuer URL, calls auth to introspect tokens, uses a shared secret, or something else.
+- What else it needs at runtime (other services, queues, caches, external APIs), and how each is stubbed or disabled locally.
+- The rough API shape: the base path, the number of endpoints, REST or GraphQL, and whether an OpenAPI spec exists. Name no endpoints that reveal business detail.
+
+3. Auth service
+- The same build and run questions as for meta.
+- What it issues (a JWT, an opaque token or a session cookie), its login endpoints in generic form, and the token lifetime.
+- The test users or roles used in dev. Describe them, and never give credentials.
+- Whether it has its own database or shares Postgres, for example with its own schema.
+- Its redirect URIs and allowed origins: are they fixed to one port? This decides whether parallel stacks on different ports can work.
+
+4. Postgres and seeding
+- The Postgres version and extensions. One database or several, and the schemas per service.
+- The seed:
+  - where it lives (describe it generically);
+  - how it runs (a SQL file, a Java runner, or a script that calls the APIs);
+  - whether it needs the services running first;
+  - how long it takes and roughly how much data it loads;
+  - whether it is safe to run twice.
+
+5. How developers run the stack today
+- The exact sequence, and which parts run in Docker and which on the host. Describe any compose file generically: its services, ports, volumes and networks.
+- The startup time for each part and in total, and the RAM and CPU one full stack uses.
+- Known pain points.
+
+6. Laptop and network constraints
+- The container runtime available (Docker Desktop, Rancher, Podman or Colima), its version, whether it needs admin rights, and how much memory it has.
+- Whether public base images (eclipse-temurin, postgres, node) are allowed or must come from an internal mirror. Write "internal mirror" and give no address.
+- The Maven, Gradle and npm dependency mirrors, and how builds authenticate to them. Describe the mechanism only, for example "settings.xml with a token".
+- Whether containers need the HTTP proxy and the corporate CA, and through which env var names or mechanisms.
+- Whether containers can reach the internet, and whether they can reach the git host.
+
+7. Tools around it
+- The git host type (GitHub Enterprise Cloud or Server, Bitbucket or GitLab), the CI system, and Jira (cloud or server).
+- Whether the GitHub Copilot CLI or SDK is available, and which models. Which kinds of MCP servers are in use (types only).
+- How a UI change is verified today: manual steps, the e2e suite, and test accounts by role.
+
+## Output
+Write one Markdown file, chiefbot-stack-spec.md, in a scratch folder outside every repo. Give it these sections:
+1. Summary, in 5 lines.
+2. Answers to questions 1–7.
+3. A generic docker-compose sketch of ONE engineer's stack. Use only generic names and public images: ui, meta, auth, postgres, and a one-shot "seed" step, with health checks and the startup order. Mark anything you inferred.
+4. What must differ between two parallel stacks (ports, database names, cookie domains, redirect URIs, container names) and what can be shared (images, dependency caches).
+5. Withheld: one line for each thing you left out for confidentiality, without its details.
+6. Open questions for me.
+
+Then show me the file and stop. I will review and redact it before it leaves this laptop.
